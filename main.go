@@ -58,7 +58,7 @@ func main() {
 	state := NewState()
 	drawer := NewDrawer()
 	game := &Game{state, drawer, 121, 61}
-	state.Tiles = Prim(1, 1, 120, 60)
+	state.Tiles = Prim(1, 1, game.Width-1, game.Height-1)
 
 	floors := []XY{}
 	for xy, tile := range state.Tiles {
