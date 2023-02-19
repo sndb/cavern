@@ -68,13 +68,13 @@ func main() {
 	}
 
 	// Add entities.
-	for i := 0; i < 4; i++ {
-		floor := floors[rand.Intn(len(floors))]
+	for i := 0; i < 10; i++ {
+		xy := floors[rand.Intn(len(floors))]
 		game.State.Add(&Miner{
-			floor,
-			image.Rect(1, 1, game.Width-1, game.Height-1),
-			rand.Intn(300),
-			state,
+			XY:     xy,
+			Bounds: image.Rect(1, 1, game.Width-1, game.Height-1),
+			Energy: rand.Intn(1000),
+			State:  state,
 		})
 	}
 
