@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Game struct {
@@ -18,9 +19,14 @@ type Game struct {
 	Width  int
 	Height int
 	Start  time.Time
+	DrawFn func(*ebiten.Image)
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	g.DrawFn(screen)
+}
+
+func (g *Game) DrawPlayer(screen *ebiten.Image) {
 	screen.Fill(color.Black)
 	for p := range g.Player.Explored {
 		tile := g.State.Tiles[p]
@@ -48,7 +54,39 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
+func (g *Game) DrawFull(screen *ebiten.Image) {
+	screen.Fill(color.Black)
+	for x := 0; x < g.Width; x++ {
+		for y := 0; y < g.Height; y++ {
+			p := XY{x, y}
+			tile := g.State.Tiles[p]
+			sym := tile.Symbol()
+			entities := g.State.EntitiesAt(p)
+			if len(entities) > 0 {
+				sym.Char = ' '
+			}
+			bg := g.Drawer.Background(color.RGBA{0x15, 0x0f, 0x0a, 0xff})
+			fg := g.Drawer.Symbol(sym)
+			g.Drawer.Draw(screen, bg, p)
+			g.Drawer.Draw(screen, fg, p)
+
+			if len(entities) == 0 {
+				continue
+			}
+			dt := int(time.Since(g.Start).Milliseconds())
+			e := entities[(dt/400)%len(entities)]
+			g.Drawer.Draw(screen, g.Drawer.Symbol(e.Symbol()), e.Pos())
+		}
+	}
+}
+
 func (g *Game) Update() error {
+	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
+		g.DrawFn = g.DrawPlayer
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
+		g.DrawFn = g.DrawFull
+	}
 	g.State.Update()
 	return nil
 }
@@ -68,6 +106,7 @@ func main() {
 		Height: 61,
 		Start:  time.Now(),
 	}
+	game.DrawFn = game.DrawPlayer
 	state.Tiles = Prim(1, 1, game.Width-1, game.Height-1)
 
 	// Find empty tiles.
