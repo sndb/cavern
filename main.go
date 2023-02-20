@@ -4,7 +4,9 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"math"
 	"math/rand"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -12,35 +14,37 @@ import (
 type Game struct {
 	State  *State
 	Drawer *Drawer
+	Player *Player
 	Width  int
 	Height int
+	Start  time.Time
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{0x15, 0x0f, 0x0a, 0xff})
-	for x := 0; x < g.Width; x++ {
-		for y := 0; y < g.Height; y++ {
-			if len(g.State.At(XY{x, y})) > 0 {
-				continue
-			}
-			i := g.Drawer.Symbol(tileSymbol[g.State.Tiles[XY{x, y}]])
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(
-				float64(x*g.Drawer.TileWidth),
-				float64(y*g.Drawer.TileHeight),
-			)
-			screen.DrawImage(i, op)
+	screen.Fill(color.Black)
+	for p := range g.Player.Explored {
+		tile := g.State.Tiles[p]
+		sym := tile.Symbol()
+		if len(g.State.EntitiesAt(p)) > 0 {
+			sym.Char = ' '
 		}
-	}
-	for _, e := range g.State.Entities {
-		i := g.Drawer.Symbol(e.Symbol())
-		xy := e.Pos()
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(
-			float64(xy.X*g.Drawer.TileWidth),
-			float64(xy.Y*g.Drawer.TileHeight),
-		)
-		screen.DrawImage(i, op)
+		if !g.Player.FOV[p] {
+			op.ColorM.ChangeHSV(math.Pi, 0.5, 0.75)
+		}
+		bg := g.Drawer.Background(color.RGBA{0x15, 0x0f, 0x0a, 0xff})
+		fg := g.Drawer.Symbol(sym)
+		g.Drawer.DrawWithOptions(screen, bg, p, op)
+		g.Drawer.DrawWithOptions(screen, fg, p, op)
+	}
+	for p := range g.Player.FOV {
+		entities := g.State.EntitiesAt(p)
+		if len(entities) == 0 {
+			continue
+		}
+		dt := int(time.Since(g.Start).Milliseconds())
+		e := entities[(dt/400)%len(entities)]
+		g.Drawer.Draw(screen, g.Drawer.Symbol(e.Symbol()), e.Pos())
 	}
 }
 
@@ -57,19 +61,26 @@ func main() {
 	// Initialize game.
 	state := NewState()
 	drawer := NewDrawer()
-	game := &Game{state, drawer, 121, 61}
+	game := &Game{
+		State:  state,
+		Drawer: drawer,
+		Width:  81,
+		Height: 61,
+		Start:  time.Now(),
+	}
 	state.Tiles = Prim(1, 1, game.Width-1, game.Height-1)
 
-	floors := []XY{}
+	// Find empty tiles.
+	empty := []XY{}
 	for xy, tile := range state.Tiles {
 		if tile == Floor {
-			floors = append(floors, xy)
+			empty = append(empty, xy)
 		}
 	}
 
 	// Add entities.
 	for i := 0; i < 10; i++ {
-		xy := floors[rand.Intn(len(floors))]
+		xy := empty[rand.Intn(len(empty))]
 		game.State.Add(&Miner{
 			XY:     xy,
 			Bounds: image.Rect(1, 1, game.Width-1, game.Height-1),
@@ -78,11 +89,16 @@ func main() {
 		})
 	}
 
+	// Add player.
+	player := &Player{empty[rand.Intn(len(empty))], map[XY]bool{}, map[XY]bool{}, 20, state}
+	game.Player = player
+	game.State.Add(player)
+
 	// Run the game.
 	width, height := game.Layout(0, 0)
-	ebiten.SetWindowSize(width, height)
+	ebiten.SetWindowSize(2*width, 2*height)
 	ebiten.SetWindowTitle("Cave")
-	ebiten.SetTPS(30)
+	ebiten.SetTPS(12)
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}

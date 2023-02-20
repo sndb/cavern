@@ -59,9 +59,9 @@ func (m *Miner) Update() {
 
 func (m *Miner) Symbol() Symbol {
 	if m.Energy <= 0 {
-		return Symbol{color.RGBA{0x55, 0x0f, 0x0a, 0xff}, 'm'}
+		return Symbol{color.RGBA{0x55, 0x0f, 0x0a, 0xff}, 'Ḳ'}
 	}
-	return Symbol{color.RGBA{0xef, 0xac, 0x28, 0xff}, '\u263a'}
+	return Symbol{color.RGBA{0xef, 0xac, 0x28, 0xff}, 'Ḳ'}
 }
 
 type Stone struct {
@@ -71,5 +71,5 @@ type Stone struct {
 func (s *Stone) Update() {}
 
 func (s *Stone) Symbol() Symbol {
-	return Symbol{color.RGBA{0x45, 0x23, 0x0d, 0xff}, '\u25cf'}
+	return Symbol{color.RGBA{0x45, 0x23, 0x0d, 0xff}, '●'}
 }
