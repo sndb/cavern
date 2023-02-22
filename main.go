@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image"
 	"image/color"
 	"log"
 	"math"
@@ -87,12 +86,20 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
 		g.DrawFn = g.DrawFull
 	}
-	g.State.Update()
+	g.Player.Update()
+	if g.Player.Updated {
+		g.State.Update()
+		g.Player.Updated = false
+	}
 	return nil
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return g.Drawer.TileWidth * g.Width, g.Drawer.TileHeight * g.Height
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 func main() {
@@ -107,7 +114,13 @@ func main() {
 		Start:  time.Now(),
 	}
 	game.DrawFn = game.DrawPlayer
-	state.Tiles = Prim(1, 1, game.Width-1, game.Height-1)
+	generators := []Generator{
+		Dungeon{MazeDFS, XY{15, 15}, 50, 0.02},
+		Cave{MazeDFS, 400, 2, 3},
+		Cave{MazePrim, 7, 3, 3},
+	}
+	gen := generators[rand.Intn(len(generators))]
+	gen.Generate(state.Tiles, Rect{0, 0, game.Width, game.Height})
 
 	// Find empty tiles.
 	empty := []XY{}
@@ -118,18 +131,24 @@ func main() {
 	}
 
 	// Add entities.
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 0; i++ {
 		xy := empty[rand.Intn(len(empty))]
 		game.State.Add(&Miner{
 			XY:     xy,
-			Bounds: image.Rect(1, 1, game.Width-1, game.Height-1),
+			Bounds: Rect{1, 1, game.Width - 1, game.Height - 1},
 			Energy: rand.Intn(1000),
 			State:  state,
 		})
 	}
 
 	// Add player.
-	player := &Player{empty[rand.Intn(len(empty))], map[XY]bool{}, map[XY]bool{}, 20, state}
+	player := &Player{
+		XY:       empty[rand.Intn(len(empty))],
+		Explored: map[XY]bool{},
+		FOV:      map[XY]bool{},
+		Radius:   20,
+		State:    state,
+	}
 	game.Player = player
 	game.State.Add(player)
 

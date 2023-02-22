@@ -1,14 +1,13 @@
 package main
 
 import (
-	"image"
 	"image/color"
 	"math/rand"
 )
 
 type Miner struct {
 	XY
-	Bounds image.Rectangle
+	Bounds Rect
 	Energy int
 	State  *State
 }
@@ -21,16 +20,13 @@ func (m *Miner) Update() {
 	m.Energy--
 
 	// Move.
-	xy := m.XY.Add([]XY{{}, North, South, West, East}[rand.Intn(5)])
-	if !xy.In(
-		m.Bounds.Min.X, m.Bounds.Min.Y,
-		m.Bounds.Max.X, m.Bounds.Max.Y,
-	) {
+	p := m.XY.Add([]XY{{}, North, South, West, East}[rand.Intn(5)])
+	if !p.In(m.Bounds) {
 		// Recurse if out of bounds.
 		m.Update()
 		return
 	}
-	m.XY = xy
+	m.XY = p
 
 	// Dig.
 	if m.State.Tiles[m.XY] == Wall {
@@ -42,12 +38,12 @@ func (m *Miner) Update() {
 
 	// Spawn another miner.
 	if rand.Float64() < 0.1 {
-		m.State.Add(&Miner{xy, m.Bounds, m.Energy, m.State})
+		m.State.Add(&Miner{p, m.Bounds, m.Energy, m.State})
 	}
 
 	// Die if surrounded by empty space.
 	empty := 0
-	for _, neigh := range xy.Neighbors() {
+	for _, neigh := range p.Neighbors() {
 		if m.State.Tiles[neigh] == Floor {
 			empty++
 		}
