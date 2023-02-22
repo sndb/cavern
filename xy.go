@@ -63,10 +63,14 @@ var (
 	East  = XY{X: +1}
 )
 
-func (p XY) N() XY { return p.Add(North) }
-func (p XY) S() XY { return p.Add(South) }
-func (p XY) W() XY { return p.Add(West) }
-func (p XY) E() XY { return p.Add(East) }
+func (p XY) N() XY  { return p.Add(North) }
+func (p XY) S() XY  { return p.Add(South) }
+func (p XY) W() XY  { return p.Add(West) }
+func (p XY) E() XY  { return p.Add(East) }
+func (p XY) NW() XY { return p.Add(North, West) }
+func (p XY) NE() XY { return p.Add(North, East) }
+func (p XY) SW() XY { return p.Add(South, West) }
+func (p XY) SE() XY { return p.Add(South, East) }
 
 // FOV calculates the Field of View of p given the radius r.
 // opaque returns true if its argument cannot pass light.

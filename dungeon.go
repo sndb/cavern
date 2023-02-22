@@ -22,47 +22,33 @@ func (d Dungeon) Generate(tiles map[XY]Tile, bounds Rect) {
 	}
 	d.Maze(tiles, bounds)
 
-	// conn connects points a and b through mid.
-	type conn struct {
-		mid XY
-		a   XY
-		b   XY
-	}
-	conns := []conn{}
-	bounds.Apply(func(p XY) {
-		if tiles[p] == Floor {
-			return
-		}
-		n, s, w, e := p.N(), p.S(), p.W(), p.E()
-		tp, tn, ts, tw, te := tiles[p], tiles[n], tiles[s], tiles[w], tiles[e]
-		if !tp.Passable() && tw.Passable() && te.Passable() && regions[w] != regions[e] {
-			conns = append(conns, conn{p, w, e})
-		}
-		if !tp.Passable() && tn.Passable() && ts.Passable() && regions[n] != regions[s] {
-			conns = append(conns, conn{p, n, s})
-		}
-	})
+	conns := findConnectors(tiles, regions, bounds)
 	rand.Shuffle(len(conns), func(i, j int) {
 		conns[i], conns[j] = conns[j], conns[i]
 	})
 
 	merged := map[int]bool{}
 	for len(conns) > 0 {
-		c := conns[len(conns)-1]
+		// Merge regions if unmerged or the sparsity is high.
+		conn := conns[len(conns)-1]
 		conns = conns[:len(conns)-1]
-		if rand.Float64() > d.Sparsity && merged[regions[c.a]] && merged[regions[c.b]] {
+		if merged[regions[conn.a]] && merged[regions[conn.b]] &&
+			rand.Float64() > d.Sparsity {
 			continue
 		}
-		pass := []Tile{Door, Arch}
-		p := pass[rand.Intn(len(pass))]
-		tiles[c.mid] = p
-		for _, q := range c.mid.Orthogonal() {
-			if in(pass, tiles[q]) {
-				floodFill(tiles, q, p)
+		passages := []Tile{Door, Arch}
+		pass := passages[rand.Intn(len(passages))]
+		tiles[conn.mid] = pass
+
+		// Make all neighbor passages equal.
+		for _, q := range conn.mid.Orthogonal() {
+			if in(passages, tiles[q]) {
+				floodFill(tiles, q, pass)
 			}
 		}
-		merged[regions[c.a]] = true
-		merged[regions[c.b]] = true
+
+		merged[regions[conn.a]] = true
+		merged[regions[conn.b]] = true
 	}
 	for removeDeadEnds(tiles) != 0 {
 	}
@@ -120,4 +106,27 @@ func Room(tiles map[XY]Tile, bounds Rect, maxSize XY) (r Rect, ok bool) {
 		tiles[p] = Floor
 	})
 	return r, true
+}
+
+type connector struct {
+	mid, a, b XY
+}
+
+// findConnectors returns all connectors that can be used to merge different regions.
+func findConnectors(tiles map[XY]Tile, regions map[XY]int, bounds Rect) []connector {
+	r := []connector{}
+	bounds.Apply(func(p XY) {
+		if tiles[p] == Floor {
+			return
+		}
+		n, s, w, e := p.N(), p.S(), p.W(), p.E()
+		tp, tn, ts, tw, te := tiles[p], tiles[n], tiles[s], tiles[w], tiles[e]
+		if !tp.Passable() && tw.Passable() && te.Passable() && regions[w] != regions[e] {
+			r = append(r, connector{p, w, e})
+		}
+		if !tp.Passable() && tn.Passable() && ts.Passable() && regions[n] != regions[s] {
+			r = append(r, connector{p, n, s})
+		}
+	})
+	return r
 }

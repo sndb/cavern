@@ -86,6 +86,7 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
 		g.DrawFn = g.DrawFull
 	}
+
 	g.Player.Update()
 	if g.Player.Updated {
 		g.State.Update()
@@ -148,6 +149,7 @@ func main() {
 		FOV:      map[XY]bool{},
 		Radius:   20,
 		State:    state,
+		Updated:  true,
 	}
 	game.Player = player
 	game.State.Add(player)
