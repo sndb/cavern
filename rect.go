@@ -23,6 +23,10 @@ func (r Rect) In(s Rect) bool {
 		r.Y0 >= s.Y0 && r.Y1 <= s.Y1
 }
 
+func (r Rect) Inset(n int) Rect {
+	return Rect{r.X0 + n, r.Y0 + n, r.X1 - n, r.Y1 - n}
+}
+
 // Apply applies f for each point in r.
 func (r Rect) Apply(f func(p XY)) {
 	for x := r.X0; x < r.X1; x++ {

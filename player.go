@@ -11,22 +11,40 @@ type Player struct {
 	Explored map[XY]bool
 	FOV      map[XY]bool
 	Radius   int
-	State    *State
 	Updated  bool
+	State    *State
+}
+
+func NewPlayer(pos XY, radius int, s *State) *Player {
+	p := &Player{
+		XY:       pos,
+		Explored: map[XY]bool{},
+		FOV:      map[XY]bool{},
+		Radius:   radius,
+		Updated:  true,
+		State:    s,
+	}
+	p.UpdateFOV()
+	return p
 }
 
 func (p *Player) Symbol() Symbol {
 	return Symbol{color.RGBA{0xef, 0xac, 0x28, 0xff}, '☺'}
 }
 
-func (p *Player) Update() {
-	if p.Updated {
-		return
-	}
+func (p *Player) UpdateFOV() {
 	p.FOV = p.XY.FOV(p.Radius, func(xy XY) bool { return p.State.Tiles[xy].Opaque() })
 	for xy := range p.FOV {
 		p.Explored[xy] = true
 	}
+}
+
+func (p *Player) Update() {
+	if p.Updated {
+		return
+	}
+	p.Updated = true
+
 	var offset XY
 	switch {
 	case pressed(ebiten.KeyUp, ebiten.KeyNumpad8, ebiten.KeyW):
@@ -46,12 +64,14 @@ func (p *Player) Update() {
 	case pressed(ebiten.KeyNumpad3, ebiten.KeyC):
 		offset = South.Add(East)
 	case pressed(ebiten.KeyNumpad5, ebiten.KeyS):
-		p.Updated = true
+	default:
+		p.Updated = false
 	}
-	var zero XY
-	if q := p.XY.Add(offset); offset != zero && p.State.Tiles[q].Passable() {
-		p.XY = q
-		p.Updated = true
+	if p.Updated {
+		if q := p.XY.Add(offset); p.State.Tiles[q].Passable() {
+			p.XY = q
+		}
+		p.UpdateFOV()
 	}
 }
 

@@ -1,6 +1,9 @@
 package main
 
-import "sort"
+import (
+	"math/rand"
+	"sort"
+)
 
 // State represents a game state.
 type State struct {
@@ -55,4 +58,15 @@ func (s *State) EntitiesAt(p XY) []Entity {
 		e = append(e, s.Entities[id])
 	}
 	return e
+}
+
+// RandomPosition returns a random unoccupied position.
+func (s *State) RandomPosition() XY {
+	empty := []XY{}
+	for xy, tile := range s.Tiles {
+		if tile == Floor {
+			empty = append(empty, xy)
+		}
+	}
+	return empty[rand.Intn(len(empty))]
 }
