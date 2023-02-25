@@ -15,11 +15,14 @@ func init() {
 func main() {
 	// Initialize the game.
 	game := &Game{
-		State:    NewState(),
-		Drawer:   NewDrawer(),
-		Viewport: XY{81, 61},
-		Bounds:   Rect{0, 0, 81, 81},
-		Start:    time.Now(),
+		State: NewState(),
+		Terminal: &Terminal{
+			TileSize:   XY{6, 8},
+			Dimensions: XY{81, 61},
+			Font:       ParseFont(fontData, 8),
+		},
+		Bounds: Rect{0, 0, 81, 81},
+		Start:  time.Now(),
 	}
 
 	// Generate a map.

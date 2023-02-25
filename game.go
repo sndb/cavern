@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"math"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -9,39 +10,57 @@ import (
 
 type Game struct {
 	State    *State
-	Drawer   *Drawer
+	Terminal *Terminal
 	Player   *Player
-	Viewport XY
 	Bounds   Rect
 	Start    time.Time
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	g.Terminal.Set(screen)
 	background := color.RGBA{0x15, 0x0f, 0x0a, 0xff}
-	grid := Grid{Cells: []Cell{}, Columns: g.Viewport.X}
-	for y := -g.Viewport.Y / 2; y <= g.Viewport.Y/2; y++ {
-		for x := -g.Viewport.X / 2; x <= g.Viewport.X/2; x++ {
-			pos := g.Player.Pos().Add(XY{x, y})
-			cell := Cell{Bg: background}
-			if ents := g.State.EntitiesAt(pos); g.Player.FOV[pos] && len(ents) > 0 {
-				ent := displayedEntity(g.Start, ents).Symbol()
-				cell.Fg = ent.Color
-				cell.Symbol = ent.Char
-			} else {
-				tile := g.State.Tiles[pos].Symbol()
-				cell.Fg = tile.Color
-				cell.Symbol = tile.Char
+	dy, dx := g.Terminal.Dimensions.Y, g.Terminal.Dimensions.X
+	for y := 0; y < dy; y++ {
+		for x := 0; x < dx; x++ {
+			// Dock camera to the edge of the map.
+			p := XY{x + g.Player.X - dx/2, y + g.Player.Y - dy/2}
+			switch {
+			case g.Player.X < dx/2:
+				p.X = x
+			case g.Player.X >= g.Bounds.X1-dx/2:
+				p.X = x + g.Bounds.X1 - dx
 			}
 			switch {
-			case g.Player.FOV[pos]:
-				cell.Style = CellFOV
-			case g.Player.Explored[pos]:
-				cell.Style = CellExplored
+			case g.Player.Y < dy/2:
+				p.Y = y
+			case g.Player.Y >= g.Bounds.Y1-dy/2:
+				p.Y = y + g.Bounds.Y1 - dy
 			}
-			grid.Cells = append(grid.Cells, cell)
+
+			c := Cell{Bg: background}
+			if ents := g.State.EntitiesAt(p); g.Player.FOV[p] && len(ents) > 0 {
+				ent := displayedEntity(g.Start, ents).Symbol()
+				c.Fg = ent.Color
+				c.Symbol = ent.Char
+			} else {
+				tile := g.State.Tiles[p].Symbol()
+				c.Fg = tile.Color
+				c.Symbol = tile.Char
+			}
+			op := &ebiten.DrawImageOptions{}
+			switch {
+			case g.Player.FOV[p]:
+				// Visible; draw as is.
+			case g.Player.Explored[p]:
+				// Explored; draw shadowed.
+				op.ColorM.ChangeHSV(math.Pi, 0.5, 0.75)
+			default:
+				// Unexplored; draw black.
+				op.ColorM.ChangeHSV(0, 0, 0)
+			}
+			g.Terminal.Print(XY{x, y}, c, op)
 		}
 	}
-	g.Drawer.Grid(screen, grid)
 }
 
 func displayedEntity(gameStart time.Time, e []Entity) Entity {
@@ -60,6 +79,5 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return g.Drawer.TileWidth * g.Viewport.X,
-		g.Drawer.TileHeight * g.Viewport.Y
+	return g.Terminal.Layout()
 }

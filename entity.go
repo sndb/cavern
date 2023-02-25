@@ -36,6 +36,6 @@ type Symboler interface {
 
 // Symbol represents a colored character on the grid.
 type Symbol struct {
-	Color color.Color
+	Color color.RGBA
 	Char  rune
 }
